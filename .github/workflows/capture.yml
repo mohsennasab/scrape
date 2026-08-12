@@ -31,7 +31,14 @@ jobs:
           pip install -q -r requirements.txt
 
       - name: Take the photos
-        run: python capture.py
+        env:
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
+        run: |
+          if [ -n "$YT_COOKIES" ]; then
+            printf '%s' "$YT_COOKIES" > "$RUNNER_TEMP/cookies.txt"
+            export YT_COOKIES_FILE="$RUNNER_TEMP/cookies.txt"
+          fi
+          python capture.py
 
       - name: Commit anything new
         if: always()

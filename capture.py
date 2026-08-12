@@ -6,6 +6,8 @@ local time. Every camera gets its own retry loop, so one bad stream
 never blocks the others.
 """
 
+import os
+import re
 import subprocess
 import sys
 import time
@@ -86,18 +88,36 @@ def resolve_rtspme(stream_id):
 
 
 def resolve_youtube(page_url):
+    """YouTube refuses stream requests from shared cloud machines
+    unless real browser cookies come along. When the YT_COOKIES_FILE
+    variable points at a cookies file we use it, otherwise this only
+    succeeds from a normal home connection."""
     options = {
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
         "format": "bestvideo/best",
     }
+    cookies = os.environ.get("YT_COOKIES_FILE")
+    if cookies and Path(cookies).exists():
+        options["cookiefile"] = cookies
     with YoutubeDL(options) as downloader:
         info = downloader.extract_info(page_url, download=False)
     address = info.get("url")
     if not address:
         raise RuntimeError("yt-dlp found no stream address")
     return address, None
+
+
+def youtube_live_thumbnail(video_id, out_path):
+    """Worst case fallback. The live thumbnail refreshes often and is
+    never blocked, but it tops out at 1280 x 720."""
+    address = f"https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg"
+    reply = requests.get(address, headers={"User-Agent": BROWSER_UA}, timeout=30)
+    reply.raise_for_status()
+    if len(reply.content) < MIN_FILE_BYTES:
+        raise RuntimeError("thumbnail came back empty or tiny")
+    out_path.write_bytes(reply.content)
 
 
 def grab_frame(address, referer, quality, out_path):
@@ -120,7 +140,7 @@ def grab_frame(address, referer, quality, out_path):
         raise RuntimeError("frame came back empty or truncated")
 
 
-def capture(camera):
+def capture(camera, last_chance=False):
     now = datetime.now(JUNEAU)
     day_dir = PHOTO_ROOT / camera["name"] / now.strftime("%Y-%m-%d")
     day_dir.mkdir(parents=True, exist_ok=True)
@@ -129,9 +149,18 @@ def capture(camera):
 
     if camera["kind"] == "rtspme":
         address, referer = resolve_rtspme(camera["stream_id"])
-    else:
+        grab_frame(address, referer, camera["jpeg_quality"], out_path)
+        return out_path
+
+    try:
         address, referer = resolve_youtube(camera["url"])
-    grab_frame(address, referer, camera["jpeg_quality"], out_path)
+        grab_frame(address, referer, camera["jpeg_quality"], out_path)
+    except Exception:
+        if not last_chance:
+            raise
+        video_id = re.search(r"[?&]v=([\w-]{11})", camera["url"]).group(1)
+        youtube_live_thumbnail(video_id, out_path)
+        log(f"{camera['name']}: stream was blocked, kept the live thumbnail instead")
     return out_path
 
 
@@ -141,7 +170,7 @@ def main():
         name = camera["name"]
         for attempt in range(1, ATTEMPTS + 1):
             try:
-                out_path = capture(camera)
+                out_path = capture(camera, last_chance=attempt == ATTEMPTS)
             except Exception as problem:
                 log(f"{name}: attempt {attempt} of {ATTEMPTS} failed, {problem}")
                 if attempt < ATTEMPTS:
