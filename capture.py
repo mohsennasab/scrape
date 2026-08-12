@@ -55,6 +55,9 @@ CAMERAS = [
         "kind": "youtube",
         "url": "https://www.youtube.com/watch?v=jJI5w_RVGtQ",
         "jpeg_quality": 2,
+        # The explore.org channel uses a promotional still as its
+        # thumbnail, so falling back to it would save a wrong image.
+        "thumbnail_fallback": False,
     },
 ]
 
@@ -162,7 +165,7 @@ def capture(camera, last_chance=False):
         address, referer = resolve_youtube(camera["url"])
         grab_frame(address, referer, camera["jpeg_quality"], out_path)
     except Exception:
-        if not last_chance:
+        if not last_chance or not camera.get("thumbnail_fallback", True):
             raise
         video_id = re.search(r"[?&]v=([\w-]{11})", camera["url"]).group(1)
         youtube_live_thumbnail(video_id, out_path)

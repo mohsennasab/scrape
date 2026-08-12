@@ -39,10 +39,13 @@ which is why timestamps can drift a little around the quarter hour marks.
 ## YouTube quality on GitHub
 
 YouTube refuses stream requests coming from shared cloud machines like
-the ones GitHub Actions runs on. When that happens the two YouTube
+the ones GitHub Actions runs on. When that happens the two river
 cameras fall back to the official live thumbnail, which refreshes every
-minute or two but tops out at 1280 x 720. The rtsp.me camera is not
-affected and always saves at its full 2880 x 1620.
+minute or two but tops out at 1280 x 720. The glacier cam cannot use
+that trick because its channel shows a promotional still instead of a
+live thumbnail, so it only saves a photo when the stream itself is
+reachable. The rtsp.me camera is not affected and always saves at its
+full 2880 x 1620.
 
 To get the YouTube cameras at their full 1080p from GitHub, hand the
 job a set of browser cookies:
