@@ -1,0 +1,26 @@
+name: Probe
+
+on: workflow_dispatch
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Try player clients
+        run: |
+          pip install -q yt-dlp
+          yt-dlp --version
+          for c in default android ios mweb tv tv_embedded web_embedded web_safari; do
+            echo "=== client: $c ==="
+            if [ "$c" = default ]; then
+              args=""
+            else
+              args="--extractor-args youtube:player_client=$c"
+            fi
+            if timeout 120 yt-dlp -g -f "bestvideo/best" --no-warnings $args "https://www.youtube.com/watch?v=ZlQLmBNLz-c" > /tmp/u.txt 2> /tmp/e.txt; then
+              echo "OK $(head -c 80 /tmp/u.txt)"
+            else
+              echo "FAIL $(grep -m1 ERROR /tmp/e.txt || tail -1 /tmp/e.txt)"
+            fi
+          done
