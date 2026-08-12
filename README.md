@@ -14,8 +14,10 @@ machine, so the archive keeps growing on its own.
 | `photos/mendenhall_river_cam` | [rtsp.me](https://rtsp.me/embed/3nNBGQsb) | Fixed view of the river, 2880 x 1620 |
 | `photos/all_cameras_grid` | [YouTube](https://www.youtube.com/live/ZlQLmBNLz-c) | Grid with all neighborhood cameras, 1080p |
 | `photos/rotating_single_view` | [YouTube](https://www.youtube.com/live/sDAtRwK8oNE) | One full screen camera at a time, rotating, 1080p |
+| `photos/mendenhall_glacier_cam` | [YouTube](https://www.youtube.com/watch?v=jJI5w_RVGtQ) | Mendenhall Glacier and Mountain Goat Cam from EXPLORE.org, 1080p |
 
-The two YouTube streams are run by Juneau Flood Solution Advocates.
+The river streams are run by Juneau Flood Solution Advocates and the
+glacier cam by EXPLORE.org.
 
 ## File naming
 

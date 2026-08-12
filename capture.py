@@ -50,6 +50,12 @@ CAMERAS = [
         "url": "https://www.youtube.com/watch?v=sDAtRwK8oNE",
         "jpeg_quality": 2,
     },
+    {
+        "name": "mendenhall_glacier_cam",
+        "kind": "youtube",
+        "url": "https://www.youtube.com/watch?v=jJI5w_RVGtQ",
+        "jpeg_quality": 2,
+    },
 ]
 
 
