@@ -1,0 +1,55 @@
+name: Snapshots
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapshots
+  cancel-in-progress: false
+
+jobs:
+  snapshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tools
+        run: |
+          command -v ffmpeg > /dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+          pip install -q -r requirements.txt
+
+      - name: Take the photos
+        run: python capture.py
+
+      - name: Commit anything new
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add photos
+          if git diff --cached --quiet; then
+            echo "Nothing new this round"
+            exit 0
+          fi
+          git commit -m "Photos for $(TZ=America/Juneau date '+%Y-%m-%d %H:%M %Z')"
+          tries=0
+          until git push; do
+            tries=$((tries + 1))
+            if [ "$tries" -ge 3 ]; then
+              exit 1
+            fi
+            git pull --rebase
+            sleep 5
+          done
