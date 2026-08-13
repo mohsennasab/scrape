@@ -85,3 +85,17 @@ To run a capture by hand you need Python 3.11 or newer and ffmpeg:
 pip install -r requirements.txt
 python capture.py
 ```
+
+## Reaching back into a stream
+
+`backfill.py` walks the history YouTube keeps for a live stream and
+saves one frame per hour into the same folders, skipping hours that
+already have a photo:
+
+```
+python backfill.py all_cameras_grid
+```
+
+How far back it reaches is up to YouTube and varies a lot by stream.
+The grid stream keeps a few hours, while the glacier and rotating
+streams keep only minutes, so there is nothing to walk there.
