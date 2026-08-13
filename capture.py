@@ -59,6 +59,17 @@ CAMERAS = [
         # thumbnail, so falling back to it would save a wrong image.
         "thumbnail_fallback": False,
     },
+    {
+        # USGS camera inside Suicide Basin, the source of the flood.
+        # A plain hourly jpg, so it works from any machine.
+        "name": "usgs_suicide_basin",
+        "kind": "image",
+        "url": (
+            "https://usgs-nims-images.s3.amazonaws.com/overlay/"
+            "AK_Glacial_Lake_near_Nugget_LOOKING_UPSTREAM_GLACIER_VIEW/"
+            "AK_Glacial_Lake_near_Nugget_LOOKING_UPSTREAM_GLACIER_VIEW_newest.jpg"
+        ),
+    },
 ]
 
 
@@ -149,12 +160,50 @@ def grab_frame(address, referer, quality, out_path):
         raise RuntimeError("frame came back empty or truncated")
 
 
+def latest_saved(camera):
+    cam_dir = PHOTO_ROOT / camera["name"]
+    if not cam_dir.exists():
+        return None
+    files = sorted(cam_dir.glob("*/" + camera["name"] + "_*.jpg"))
+    return files[-1] if files else None
+
+
+def already_covered(camera, now):
+    """Workflow runs can overlap around the quarter hour marks, so a
+    camera gets skipped when its slot already has a photo."""
+    day_dir = PHOTO_ROOT / camera["name"] / now.strftime("%Y-%m-%d")
+    if not day_dir.exists():
+        return False
+    slot = (now.hour * 60 + now.minute) // 15
+    for existing in day_dir.glob(camera["name"] + "_*.jpg"):
+        found = re.search(r"_(\d{2})(\d{2})_[A-Z]", existing.name)
+        if found:
+            minutes = int(found.group(1)) * 60 + int(found.group(2))
+            if minutes // 15 == slot:
+                return True
+    return False
+
+
 def capture(camera, last_chance=False):
     now = datetime.now(JUNEAU)
     day_dir = PHOTO_ROOT / camera["name"] / now.strftime("%Y-%m-%d")
     day_dir.mkdir(parents=True, exist_ok=True)
     filename = "{}_{}.jpg".format(camera["name"], now.strftime("%Y-%m-%d_%H%M_%Z"))
     out_path = day_dir / filename
+
+    if camera["kind"] == "image":
+        reply = requests.get(
+            camera["url"], headers={"User-Agent": BROWSER_UA}, timeout=60
+        )
+        reply.raise_for_status()
+        if len(reply.content) < MIN_FILE_BYTES:
+            raise RuntimeError("image came back empty or tiny")
+        previous = latest_saved(camera)
+        if previous and previous.read_bytes() == reply.content:
+            log(f"{camera['name']}: source has not posted a new frame yet")
+            return None
+        out_path.write_bytes(reply.content)
+        return out_path
 
     if camera["kind"] == "rtspme":
         address, referer = resolve_rtspme(camera["stream_id"])
@@ -177,6 +226,10 @@ def main():
     saved = 0
     for camera in CAMERAS:
         name = camera["name"]
+        if already_covered(camera, datetime.now(JUNEAU)):
+            log(f"{name}: this quarter hour already has a photo")
+            saved += 1
+            continue
         for attempt in range(1, ATTEMPTS + 1):
             try:
                 out_path = capture(camera, last_chance=attempt == ATTEMPTS)
@@ -185,8 +238,9 @@ def main():
                 if attempt < ATTEMPTS:
                     time.sleep(RETRY_WAIT_SEC)
             else:
-                size_kb = out_path.stat().st_size // 1024
-                log(f"{name}: saved {out_path.name} ({size_kb} KB)")
+                if out_path is not None:
+                    size_kb = out_path.stat().st_size // 1024
+                    log(f"{name}: saved {out_path.name} ({size_kb} KB)")
                 saved += 1
                 break
         else:

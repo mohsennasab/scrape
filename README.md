@@ -1,10 +1,11 @@
 # Juneau flood cameras
 
-Automatic snapshots from three live streams watching the Mendenhall River
-during the 2026 glacial lake outburst flood in Juneau, Alaska.
+Automatic snapshots from cameras watching the Mendenhall River and
+Suicide Basin during the 2026 glacial lake outburst flood in Juneau,
+Alaska.
 
-A GitHub Actions job wakes up every 15 minutes, grabs one frame from each
-stream, and commits the photos to this repo. Nothing runs on a personal
+A GitHub Actions job grabs one frame from each camera every 15 minutes
+and commits the photos to this repo. Nothing runs on a personal
 machine, so the archive keeps growing on its own.
 
 ## Cameras
@@ -15,9 +16,12 @@ machine, so the archive keeps growing on its own.
 | `photos/all_cameras_grid` | [YouTube](https://www.youtube.com/live/ZlQLmBNLz-c) | Grid with all neighborhood cameras, 1080p |
 | `photos/rotating_single_view` | [YouTube](https://www.youtube.com/live/sDAtRwK8oNE) | One full screen camera at a time, rotating, 1080p |
 | `photos/mendenhall_glacier_cam` | [YouTube](https://www.youtube.com/watch?v=jJI5w_RVGtQ) | Mendenhall Glacier and Mountain Goat Cam from EXPLORE.org, 1080p |
+| `photos/usgs_suicide_basin` | [USGS](https://apps.usgs.gov/hivis/camera/AK_Glacial_Lake_near_Nugget_LOOKING_UPSTREAM_GLACIER_VIEW) | Inside Suicide Basin, the source of the flood, posted hourly at 1280 x 720 |
 
-The river streams are run by Juneau Flood Solution Advocates and the
-glacier cam by EXPLORE.org.
+The river streams are run by Juneau Flood Solution Advocates, the
+glacier cam by EXPLORE.org, and the basin camera by USGS. The basin
+camera publishes one image an hour, so its folder gets one photo per
+update instead of four duplicates.
 
 ## File naming
 
@@ -33,8 +37,15 @@ Times are Juneau local time. A file called
 Frames are saved as high quality JPEGs straight from the stream with no
 resizing, so each photo keeps the full resolution of its source. Every
 camera has its own retry loop and one stream going down never stops the
-other two. GitHub sometimes starts scheduled jobs a few minutes late,
-which is why timestamps can drift a little around the quarter hour marks.
+others.
+
+GitHub fires cron schedules for small repos far less often than asked,
+sometimes only once an hour. To keep a real 15 minute cadence each run
+stays alive for almost three hours, shooting on every quarter hour and
+pushing as it goes, while queued runs take over the moment a window
+ends. A guard skips any quarter hour that already has its photo, so
+overlapping runs never double up. Timestamps can still drift a few
+minutes around the quarter hour marks.
 
 ## YouTube quality on GitHub
 

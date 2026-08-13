@@ -2,7 +2,10 @@ name: Snapshots
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "4 * * * *"
+    - cron: "19 * * * *"
+    - cron: "34 * * * *"
+    - cron: "49 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -15,7 +18,7 @@ concurrency:
 jobs:
   snapshots:
     runs-on: ubuntu-latest
-    timeout-minutes: 14
+    timeout-minutes: 178
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
@@ -30,33 +33,40 @@ jobs:
           command -v ffmpeg > /dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
           pip install -q -r requirements.txt
 
-      - name: Take the photos
+      # GitHub fires cron schedules for small repos far less often than
+      # asked, sometimes hourly. So one run keeps going for almost three
+      # hours, shooting on every quarter hour and pushing as it goes.
+      # Queued runs take over the moment a window ends.
+      - name: Take photos every quarter hour
         env:
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ -n "$YT_COOKIES" ]; then
             printf '%s' "$YT_COOKIES" > "$RUNNER_TEMP/cookies.txt"
             export YT_COOKIES_FILE="$RUNNER_TEMP/cookies.txt"
           fi
-          python capture.py
-
-      - name: Commit anything new
-        if: always()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add photos
-          if git diff --cached --quiet; then
-            echo "Nothing new this round"
-            exit 0
-          fi
-          git commit -m "Photos for $(TZ=America/Juneau date '+%Y-%m-%d %H:%M %Z')"
-          tries=0
-          until git push; do
-            tries=$((tries + 1))
-            if [ "$tries" -ge 3 ]; then
-              exit 1
+          push_photos() {
+            git add photos
+            if git diff --cached --quiet; then return 0; fi
+            git commit -m "Photos for $(TZ=America/Juneau date '+%Y-%m-%d %H:%M %Z')"
+            tries=0
+            until git push; do
+              tries=$((tries+1))
+              if [ "$tries" -ge 3 ]; then return 1; fi
+              git pull --rebase
+              sleep 5
+            done
+          }
+          finish=$(( $(date +%s) + 170 * 60 ))
+          while true; do
+            python capture.py || true
+            push_photos || true
+            now=$(date +%s)
+            next=$(( (now / 900 + 1) * 900 ))
+            if [ "$next" -ge "$finish" ]; then
+              break
             fi
-            git pull --rebase
-            sleep 5
+            sleep $(( next - now ))
           done
