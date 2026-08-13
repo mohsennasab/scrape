@@ -33,6 +33,15 @@ MIN_FILE_BYTES = 20_000
 
 CAMERAS = [
     {
+        # Every 5 minutes rather than the usual 15, and first in line
+        # so its shots land right on the 5 minute marks.
+        "name": "rotating_single_view",
+        "kind": "youtube",
+        "url": "https://www.youtube.com/watch?v=sDAtRwK8oNE",
+        "jpeg_quality": 2,
+        "every": 5,
+    },
+    {
         "name": "mendenhall_river_cam",
         "kind": "rtspme",
         "stream_id": "3nNBGQsb",
@@ -43,12 +52,6 @@ CAMERAS = [
         "kind": "youtube",
         "url": "https://www.youtube.com/watch?v=ZlQLmBNLz-c",
         "jpeg_quality": 1,
-    },
-    {
-        "name": "rotating_single_view",
-        "kind": "youtube",
-        "url": "https://www.youtube.com/watch?v=sDAtRwK8oNE",
-        "jpeg_quality": 2,
     },
     {
         "name": "mendenhall_glacier_cam",
@@ -191,17 +194,19 @@ def latest_saved(camera):
 
 
 def already_covered(camera, now):
-    """Workflow runs can overlap around the quarter hour marks, so a
-    camera gets skipped when its slot already has a photo."""
+    """Workflow runs wake more often than most cameras need, so a
+    camera gets skipped when its current slot already has a photo.
+    Slot length comes from the camera's own cadence."""
     day_dir = PHOTO_ROOT / camera["name"] / now.strftime("%Y-%m-%d")
     if not day_dir.exists():
         return False
-    slot = (now.hour * 60 + now.minute) // 15
+    every = camera.get("every", 15)
+    slot = (now.hour * 60 + now.minute) // every
     for existing in day_dir.glob(camera["name"] + "_*.jpg"):
         found = re.search(r"_(\d{2})(\d{2})_[A-Z]", existing.name)
         if found:
             minutes = int(found.group(1)) * 60 + int(found.group(2))
-            if minutes // 15 == slot:
+            if minutes // every == slot:
                 return True
     return False
 
@@ -249,7 +254,7 @@ def main():
     for camera in CAMERAS:
         name = camera["name"]
         if already_covered(camera, datetime.now(JUNEAU)):
-            log(f"{name}: this quarter hour already has a photo")
+            log(f"{name}: this time slot already has a photo")
             saved += 1
             continue
         for attempt in range(1, ATTEMPTS + 1):

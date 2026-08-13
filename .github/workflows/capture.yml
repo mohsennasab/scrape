@@ -46,9 +46,10 @@ jobs:
 
       # GitHub fires cron schedules for small repos far less often than
       # asked, sometimes hourly. So one run keeps going for almost three
-      # hours, shooting on every quarter hour and pushing as it goes.
+      # hours, waking every five minutes and pushing as it goes. Each
+      # camera's own cadence decides whether a wake up captures it.
       # Queued runs take over the moment a window ends.
-      - name: Take photos every quarter hour
+      - name: Take photos on schedule
         env:
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
         run: |
@@ -77,14 +78,17 @@ jobs:
           }
           finish=$(( $(date +%s) + 170 * 60 ))
           while true; do
+            start=$(date +%s)
             python capture.py || true
             push_photos || true
+            next=$(( (start / 300 + 1) * 300 ))
             now=$(date +%s)
-            next=$(( (now / 900 + 1) * 900 ))
             if [ "$next" -ge "$finish" ]; then
               break
             fi
-            sleep $(( next - now ))
+            if [ "$next" -gt "$now" ]; then
+              sleep $(( next - now ))
+            fi
           done
 
       - name: Keep cookie state
