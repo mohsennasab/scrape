@@ -17,10 +17,12 @@ machine, so the archive keeps growing on its own.
 | `photos/rotating_single_view` | [YouTube](https://www.youtube.com/live/sDAtRwK8oNE) | One full screen camera at a time, rotating, 1080p |
 | `photos/mendenhall_glacier_cam` | [YouTube](https://www.youtube.com/watch?v=jJI5w_RVGtQ) | Mendenhall Glacier and Mountain Goat Cam from EXPLORE.org, 1080p |
 | `photos/usgs_suicide_basin` | [USGS](https://apps.usgs.gov/hivis/camera/AK_Glacial_Lake_near_Nugget_LOOKING_UPSTREAM_GLACIER_VIEW) | Inside Suicide Basin, the source of the flood, posted hourly at 1280 x 720 |
+| `photos/usgs_basin_spillway` | [USGS](https://apps.usgs.gov/hivis/camera/AK_Glacial_Lake_SPILLWAY_VIEW_Mendenhall) | The spillway where the basin drains over the glacier, hourly |
+| `photos/usgs_spillway_downstream` | [USGS](https://apps.usgs.gov/hivis/camera/AK_Suicide_Basin_Spillway_Downstream_View) | Looking downstream from the spillway, hourly |
 
 The river streams are run by Juneau Flood Solution Advocates, the
-glacier cam by EXPLORE.org, and the basin camera by USGS. The basin
-camera publishes one image an hour, so its folder gets one photo per
+glacier cam by EXPLORE.org, and the basin cameras by USGS. The USGS
+cameras publish one image an hour, so their folders get one photo per
 update instead of four duplicates.
 
 ## File naming
@@ -66,12 +68,16 @@ job a set of browser cookies:
 2. Export cookies with an extension such as Get cookies.txt LOCALLY
 3. Close the private window without logging out
 4. In this repo go to Settings, then Secrets and variables, then
-   Actions, and add a secret named `YT_COOKIES` with the whole file as
-   its value
+   Actions, and set a secret named `YT_COOKIES` to the whole file
 
-The job picks the secret up on its next run. No other change is needed.
-If the cookies ever expire the job simply drops back to thumbnails, so
-nothing breaks in the meantime.
+Handle the export like a one way ticket. YouTube treats a cookie set
+that shows up from more than one place as stolen and kills it within
+minutes, so paste the export straight into the secret without testing
+it anywhere first, and never reuse that browser session. After the
+first run the job keeps its own living copy of the session between
+runs, which is what lets a single export last. If the chain ever
+breaks the job simply drops back to thumbnails until a fresh export
+replaces the secret, so nothing breaks in the meantime.
 
 To run a capture by hand you need Python 3.11 or newer and ffmpeg:
 

@@ -70,6 +70,25 @@ CAMERAS = [
             "AK_Glacial_Lake_near_Nugget_LOOKING_UPSTREAM_GLACIER_VIEW_newest.jpg"
         ),
     },
+    {
+        # The spillway where water leaves the basin over the glacier.
+        "name": "usgs_basin_spillway",
+        "kind": "image",
+        "url": (
+            "https://usgs-nims-images.s3.amazonaws.com/overlay/"
+            "AK_Glacial_Lake_SPILLWAY_VIEW_Mendenhall/"
+            "AK_Glacial_Lake_SPILLWAY_VIEW_Mendenhall_newest.jpg"
+        ),
+    },
+    {
+        "name": "usgs_spillway_downstream",
+        "kind": "image",
+        "url": (
+            "https://usgs-nims-images.s3.amazonaws.com/overlay/"
+            "AK_Suicide_Basin_Spillway_Downstream_View/"
+            "AK_Suicide_Basin_Spillway_Downstream_View_newest.jpg"
+        ),
+    },
 ]
 
 

@@ -33,6 +33,17 @@ jobs:
           command -v ffmpeg > /dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
           pip install -q -r requirements.txt
 
+      # YouTube invalidates a cookie snapshot that keeps reappearing
+      # from fresh cloud addresses, so the job carries an evolving copy
+      # between runs the way a browser would, seeded from the secret
+      # only when a new secret starts a new chain.
+      - name: Bring back cookie state
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cookie-state
+          key: cookie-state-${{ github.run_id }}
+          restore-keys: cookie-state-
+
       # GitHub fires cron schedules for small repos far less often than
       # asked, sometimes hourly. So one run keeps going for almost three
       # hours, shooting on every quarter hour and pushing as it goes.
@@ -44,8 +55,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ -n "$YT_COOKIES" ]; then
-            printf '%s' "$YT_COOKIES" > "$RUNNER_TEMP/cookies.txt"
-            export YT_COOKIES_FILE="$RUNNER_TEMP/cookies.txt"
+            gen=$(printf '%s' "$YT_COOKIES" | sha256sum | cut -c1-12)
+            mkdir -p ~/.cookie-state
+            state=~/.cookie-state/cookies-$gen.txt
+            if [ ! -s "$state" ]; then
+              printf '%s' "$YT_COOKIES" > "$state"
+            fi
+            export YT_COOKIES_FILE="$state"
           fi
           push_photos() {
             git add photos
@@ -70,3 +86,10 @@ jobs:
             fi
             sleep $(( next - now ))
           done
+
+      - name: Keep cookie state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cookie-state
+          key: cookie-state-${{ github.run_id }}
