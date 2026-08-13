@@ -97,6 +97,12 @@ already have a photo:
 python backfill.py all_cameras_grid
 ```
 
-How far back it reaches is up to YouTube and varies a lot by stream.
-The grid stream keeps a few hours, while the glacier and rotating
-streams keep only minutes, so there is nothing to walk there.
+How far back it reaches is up to YouTube and swings between minutes
+and several hours, so a single pass may find little. With `--hourly`
+the script stays running, does a pass shortly after every top of the
+hour, and pushes anything new to GitHub, which builds a steady hourly
+record for the streams the cloud job cannot reach at full quality:
+
+```
+python backfill.py mendenhall_glacier_cam --hourly
+```

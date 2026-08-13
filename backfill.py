@@ -9,15 +9,22 @@ naming the camera to walk (glacier cam when left out):
 
     python backfill.py all_cameras_grid
 
+With --hourly it stays running, does one pass shortly after every top
+of the hour, and pushes anything new to GitHub:
+
+    python backfill.py mendenhall_glacier_cam --hourly
+
 Already saved hours are skipped, so rerunning only fills gaps. How far
 back it can reach depends on how much history YouTube keeps for the
-stream, which for some cameras is only minutes.
+stream, which swings between minutes and several hours, another reason
+the hourly mode is worth leaving on.
 """
 
 import re
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urljoin
@@ -34,8 +41,10 @@ STREAMS = {
     "all_cameras_grid": "https://www.youtube.com/watch?v=ZlQLmBNLz-c",
     "rotating_single_view": "https://www.youtube.com/watch?v=sDAtRwK8oNE",
 }
-CAMERA_NAME = sys.argv[1] if len(sys.argv) > 1 else "mendenhall_glacier_cam"
+_names = [word for word in sys.argv[1:] if not word.startswith("--")]
+CAMERA_NAME = _names[0] if _names else "mendenhall_glacier_cam"
 VIDEO_URL = STREAMS[CAMERA_NAME]
+HOURLY = "--hourly" in sys.argv
 JPEG_QUALITY = 2
 MAX_HOURS = 14 * 24
 
@@ -141,6 +150,24 @@ def save_frame(template, seq, out_path):
         Path(seg_path).unlink(missing_ok=True)
 
 
+def push_photos():
+    root = Path(__file__).resolve().parent
+    steps = [
+        ["git", "add", "photos"],
+        ["git", "commit", "-m", f"Backfill for {CAMERA_NAME}"],
+        ["git", "pull", "--rebase", "--autostash"],
+        ["git", "push"],
+    ]
+    for step in steps:
+        done = subprocess.run(step, cwd=root, capture_output=True, text=True)
+        if done.returncode != 0:
+            if step[1] == "commit":
+                return
+            log(f"git {step[1]} failed, {done.stderr.strip().splitlines()[-1:]}")
+            return
+    log("pushed to GitHub")
+
+
 def main():
     log("resolving the stream")
     address = playlist_address()
@@ -184,9 +211,24 @@ def main():
         hour += timedelta(hours=1)
 
     log(f"done, {saved} saved, {skipped} already there, {failed} failed")
-    if saved == 0 and failed > 0:
+    if saved == 0 and failed > 0 and not HOURLY:
         sys.exit(1)
+    return saved
 
 
 if __name__ == "__main__":
-    main()
+    if not HOURLY:
+        main()
+    else:
+        while True:
+            try:
+                if main() > 0:
+                    push_photos()
+            except Exception as problem:
+                log(f"pass failed, {problem}")
+            coming = datetime.now(timezone.utc)
+            coming = coming.replace(minute=0, second=0, microsecond=0) + timedelta(
+                hours=1, seconds=90
+            )
+            log(f"next pass at {coming.astimezone(JUNEAU):%H:%M %Z}")
+            time.sleep((coming - datetime.now(timezone.utc)).total_seconds())
