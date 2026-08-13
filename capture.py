@@ -117,6 +117,9 @@ def resolve_youtube(page_url):
         "no_warnings": True,
         "noplaylist": True,
         "format": "bestvideo/best",
+        # Signed in requests get formats behind a JavaScript challenge,
+        # solved by the yt-dlp-ejs package through node or deno.
+        "js_runtimes": {"deno": {}, "node": {}},
     }
     cookies = os.environ.get("YT_COOKIES_FILE")
     if cookies and Path(cookies).exists():
