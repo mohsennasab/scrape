@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: snapshots
+  group: capture-window
   cancel-in-progress: false
 
 jobs:
