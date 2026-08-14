@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: capture-window
@@ -52,7 +53,15 @@ jobs:
       - name: Take photos on schedule
         env:
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          # Capturing ends for good at 2:15 pm Juneau time on August 14,
+          # after which the job switches this workflow off.
+          deadline=1786745700
+          if [ "$(date +%s)" -ge "$deadline" ]; then
+            gh workflow disable capture.yml
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ -n "$YT_COOKIES" ]; then
@@ -77,6 +86,9 @@ jobs:
             done
           }
           finish=$(( $(date +%s) + 170 * 60 ))
+          if [ "$finish" -gt "$deadline" ]; then
+            finish=$deadline
+          fi
           while true; do
             start=$(date +%s)
             python capture.py || true
@@ -90,6 +102,9 @@ jobs:
               sleep $(( next - now ))
             fi
           done
+          if [ "$finish" -eq "$deadline" ]; then
+            gh workflow disable capture.yml
+          fi
 
       - name: Keep cookie state
         if: always()

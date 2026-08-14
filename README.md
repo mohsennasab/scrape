@@ -42,6 +42,10 @@ resizing, so each photo keeps the full resolution of its source. Every
 camera has its own retry loop and one stream going down never stops the
 others.
 
+Capturing winds down on its own at 2:15 pm Juneau time on August 14
+2026, when the job switches its workflow off. To pick it back up
+later, enable the Snapshots workflow again from the Actions tab.
+
 GitHub fires cron schedules for small repos far less often than asked,
 sometimes only once an hour. To keep a real cadence each run stays
 alive for almost three hours, waking every five minutes and pushing as
